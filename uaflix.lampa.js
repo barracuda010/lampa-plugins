@@ -6,13 +6,13 @@
     var DOMAIN = 'https://uaflix.net';
 
     /* =========================
-       SOURCE
+       SOURCE (картки фільмів)
     ========================== */
 
     var source = {
         name: 'UAFlix',
-        description: 'UAFlix.net',
-        version: '1.0.0',
+        description: 'Фільми з uaflix.net',
+        version: '1.1.0',
         type: 'video',
 
         search: function (query, callback) {
@@ -38,19 +38,29 @@
         doc.innerHTML = html;
 
         doc.querySelectorAll('a').forEach(function (a) {
-            var href = a.getAttribute('href') || '';
+            var href = a.getAttribute('href');
+            if (!href) return;
+
             if (!href.includes('/film') && !href.includes('/series')) return;
 
-            var title = a.querySelector('img')?.getAttribute('alt');
-            var poster = a.querySelector('img')?.getAttribute('src');
+            var img = a.querySelector('img');
+            if (!img) return;
+
+            var title = img.getAttribute('alt');
+            var poster = img.getAttribute('src');
 
             if (!title || !poster) return;
 
             items.push({
                 title: title.trim(),
+                original_title: title.trim(),
                 poster: poster,
                 url: DOMAIN + href,
-                type: 'movie'
+
+                // КЛЮЧОВЕ
+                type: 'movie',
+                source: 'uaflix',
+                playable: true
             });
         });
 
@@ -60,7 +70,7 @@
     Lampa.Source.add(source);
 
     /* =========================
-       PLAYER
+       PLAYER (відтворення)
     ========================== */
 
     Lampa.Listener.follow('player', function (e) {
@@ -74,8 +84,10 @@
     function loadPlayer(pageUrl) {
         Lampa.Utils.get(pageUrl, function (html) {
 
-            // 1. file:"..."
-            var match = html.match(/file\s*:\s*"(https?:\/\/[^"]+)"/);
+            var match = null;
+
+            // 1. file:"https://..."
+            match = html.match(/file\s*:\s*"(https?:\/\/[^"]+)"/);
 
             // 2. <video src="">
             if (!match) {
@@ -87,18 +99,18 @@
                 match = html.match(/<iframe[^>]+src="([^"]+)"/);
             }
 
-            if (match) {
+            if (match && match[1]) {
                 Lampa.Player.play({
                     url: match[1],
                     title: 'UAFlix',
-                    type: 'hls'
+                    type: match[1].includes('.m3u8') ? 'hls' : 'video'
                 });
             } else {
                 Lampa.Noty.show('UAFlix: відео не знайдено');
             }
 
         }, function () {
-            Lampa.Noty.show('UAFlix: помилка завантаження');
+            Lampa.Noty.show('UAFlix: помилка завантаження сторінки');
         });
     }
 
